@@ -1,0 +1,272 @@
+name: ${COMPOSE_PROJECT_NAME:?Run make install first}
+
+x-airflow: &airflow
+  image: ${COMPOSE_PROJECT_NAME}-airflow:3.3.2
+  build:
+    context: ../..
+    dockerfile: infra/airflow/Dockerfile
+  user: "50000:0"
+  env_file: .local/airflow.env
+  environment: &environment
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
+    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: gateway:user,operator:admin
+    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: /auth/airflow_passwords.json
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://api-server:8080/execution/
+    AIRFLOW__CORE__PARALLELISM: "4"
+    AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: "1"
+    AIRFLOW__CORE__DEFAULT_TASK_EXECUTION_TIMEOUT: "180"
+    AIRFLOW__LOGGING__JSON_LOGS: "true"
+    AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
+    AIRFLOW__CELERY__WORKER_CONCURRENCY: "2"
+    AIRFLOW__CELERY__WORKER_PREFETCH_MULTIPLIER: "1"
+    POC_MAX_ACTIVE_RUNS: ${POC_MAX_ACTIVE_RUNS:-1}
+    POC_AGENT_POOL_SLOTS: ${POC_AGENT_POOL_SLOTS:-2}
+    POC_VALIDATION_POOL_SLOTS: ${POC_VALIDATION_POOL_SLOTS:-1}
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+    AIRFLOW__DAG_PROCESSOR__PARSING_PROCESSES: "1"
+    AIRFLOW__API__WORKERS: "1"
+    AIRFLOW__API_AUTH__JWT_ISSUER: local-airflow-poc
+    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "false"
+  volumes:
+    - ../../projects/example-service/dags:/opt/airflow/dags:ro
+    - ../../airflow-core/airflow_core:/deployment/airflow-core/airflow_core:ro
+    - ../../projects/example-service/policy.py:/deployment/project_policy.py:ro
+    - ../../projects/example-service/workflow_policy.py:/deployment/workflow_policy.py:ro
+    - ../../projects/example-service/operational_policy.py:/deployment/operational_policy.py:ro
+    - ../../projects/example-service/scripts:/deployment/scripts:ro
+    - ../../projects/example-service/prompts:/deployment/prompts:ro
+    - ./policy.json:/deployment/policy.json:ro
+    - mirrors:/mirrors:ro
+    - logs:/opt/airflow/logs
+  depends_on: &dependencies
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    airflow-init:
+      condition: service_completed_successfully
+  restart: unless-stopped
+
+x-job-health: &job-health
+  interval: 60s
+  timeout: 60s
+  retries: 8
+  start_period: 90s
+
+x-worker: &worker
+  <<: *airflow
+  command: celery worker
+  cpus: 2.0
+  mem_limit: 2g
+  memswap_limit: 2g
+  pids_limit: 256
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  ulimits:
+    core: 0
+    nofile: {soft: 1024, hard: 1024}
+  volumes:
+    - ../../projects/example-service/dags:/opt/airflow/dags:ro
+    - ../../airflow-core/airflow_core:/deployment/airflow-core/airflow_core:ro
+    - ../../projects/example-service/policy.py:/deployment/project_policy.py:ro
+    - ../../projects/example-service/workflow_policy.py:/deployment/workflow_policy.py:ro
+    - ../../projects/example-service/operational_policy.py:/deployment/operational_policy.py:ro
+    - ../../projects/example-service/scripts:/deployment/scripts:ro
+    - ../../projects/example-service/prompts:/deployment/prompts:ro
+    - ./policy.json:/deployment/policy.json:ro
+    - mirrors:/mirrors:ro
+    - logs:/opt/airflow/logs
+    - ./.local/secrets/minio_user:/secrets/minio_user:ro
+    - ./.local/secrets/minio_password:/secrets/minio_password:ro
+    - ./.local/secrets/agent_provider.json:/model-auth/provider.json:ro
+  environment:
+    <<: *environment
+    DUMB_INIT_SETSID: "0"
+  depends_on:
+    <<: *dependencies
+    model-egress:
+      condition: service_healthy
+    api-server:
+      condition: service_healthy
+  healthcheck:
+    <<: *job-health
+    test: [CMD-SHELL, 'celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}" --timeout 5']
+
+services:
+  model-egress:
+    image: ${COMPOSE_PROJECT_NAME}-model-egress:0.1.0
+    build: ../egress
+    networks: [default, egress]
+    read_only: true
+    user: "65532:65532"
+    cpus: 0.5
+    mem_limit: 64m
+    memswap_limit: 64m
+    pids_limit: 32
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    ulimits:
+      core: 0
+      nofile: {soft: 128, hard: 128}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+  postgres:
+    image: postgres:16.10-bookworm
+    env_file: .local/postgres.env
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD, pg_isready, -U, airflow]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+  redis:
+    image: redis:7.2.10-bookworm
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+  airflow-init:
+    <<: *airflow
+    user: "0:0"
+    entrypoint: [python, /deployment/bootstrap.py]
+    command: []
+    restart: "no"
+    volumes:
+      - ../../airflow-core/airflow_core:/deployment/airflow-core/airflow_core:ro
+      - ./bootstrap.py:/deployment/bootstrap.py:ro
+      - ./policy.json:/deployment/policy.json:ro
+      - ../../projects/example-service/fixtures:/fixture:ro
+      - mirrors:/mirrors
+      - logs:/opt/airflow/logs
+      - minio:/data
+      - auth:/auth
+      - ./.local/secrets/airflow_passwords.json:/secrets/airflow_passwords.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  api-server:
+    <<: *airflow
+    networks: [default, frontend]
+    command: api-server
+    ports:
+      - "127.0.0.1:18080:8080"
+    volumes:
+      - ../../projects/example-service/dags:/opt/airflow/dags:ro
+      - ../../airflow-core/airflow_core:/deployment/airflow-core/airflow_core:ro
+      - ../../projects/example-service/policy.py:/deployment/project_policy.py:ro
+      - ../../projects/example-service/workflow_policy.py:/deployment/workflow_policy.py:ro
+      - ../../projects/example-service/operational_policy.py:/deployment/operational_policy.py:ro
+      - ./policy.json:/deployment/policy.json:ro
+      - auth:/auth
+      - mirrors:/mirrors:ro
+      - logs:/opt/airflow/logs
+    healthcheck:
+      <<: *job-health
+      test: [CMD, curl, --fail, --max-time, "5", "http://localhost:8080/api/v2/monitor/health"]
+  scheduler:
+    <<: *airflow
+    command: scheduler
+    healthcheck:
+      <<: *job-health
+      test: [CMD-SHELL, 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
+  dag-processor:
+    <<: *airflow
+    command: dag-processor
+    healthcheck:
+      <<: *job-health
+      test: [CMD-SHELL, 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
+  triggerer:
+    <<: *airflow
+    command: triggerer
+    healthcheck:
+      <<: *job-health
+      test: [CMD-SHELL, 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"']
+  worker-1:
+    <<: *worker
+    command: celery worker --queues default,worker-1
+  worker-2:
+    <<: *worker
+    command: celery worker --queues default,worker-2
+  minio:
+    networks: [default, frontend]
+    image: ${COMPOSE_PROJECT_NAME}-minio:RELEASE.2025-04-22T22-12-26Z
+    build:
+      context: .
+      dockerfile: Minio.Dockerfile
+    command: [server, /data, --console-address, ":9001"]
+    environment:
+      MINIO_ROOT_USER_FILE: /secrets/minio_user
+      MINIO_ROOT_PASSWORD_FILE: /secrets/minio_password
+    volumes:
+      - minio:/data
+      - ./.local/secrets/minio_user:/secrets/minio_user:ro
+      - ./.local/secrets/minio_password:/secrets/minio_password:ro
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:19000:9000"
+      - "127.0.0.1:19001:9001"
+    healthcheck:
+      test: [CMD, curl, --fail, --max-time, "5", "http://localhost:9000/minio/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+  run-api:
+    networks: [default, frontend]
+    image: ${COMPOSE_PROJECT_NAME}-run-api:0.1.0
+    build:
+      context: ../..
+      dockerfile: services/run-api/Dockerfile
+    volumes:
+      - ../../projects/example-service/prompts:/deployment/prompts:ro
+      - ./policy.json:/deployment/policy.json:ro
+      - ./.local/secrets/gateway_token:/secrets/gateway_token:ro
+      - ./.local/secrets/airflow_password:/secrets/airflow_password:ro
+      - ../../airflow-core/airflow_core:/deployment/airflow-core/airflow_core:ro
+      - ../../projects/example-service/policy.py:/deployment/project_policy.py:ro
+      - ../../projects/example-service/workflow_policy.py:/deployment/workflow_policy.py:ro
+      - ../../projects/example-service/operational_policy.py:/deployment/operational_policy.py:ro
+      - ../../projects/example-service/scripts:/deployment/scripts:ro
+      - ./.local/secrets/minio_user:/secrets/minio_user:ro
+      - ./.local/secrets/minio_password:/secrets/minio_password:ro
+    environment:
+      PYTHONPATH: /deployment/airflow-core
+    ports:
+      - "127.0.0.1:18081:8081"
+    depends_on:
+      api-server:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8081/health', timeout=5)"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  postgres:
+  mirrors:
+  logs:
+  minio:
+  auth:
+
+networks:
+  default:
+    internal: true
+  frontend: {}
+  egress: {}

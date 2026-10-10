@@ -1,0 +1,29 @@
+name: Quality gates
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.12'
+      - run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - run: make install
+      - run: make lint format-check typecheck schemas-check shellcheck audit
+      - run: npm test --prefix packages/agent-runtime
+      - run: .venv/bin/python -m pytest -q --ignore=tests/integration
+      - name: Start real storage only
+        run: |
+          docker compose --env-file infra/airflow/.local/compose.env -f infra/airflow/compose.yaml build minio
+          .venv/bin/python tools/deploy.py preflight
+          docker compose --env-file infra/airflow/.local/compose.env -f infra/airflow/compose.yaml up -d --no-deps --wait minio
+      - run: make test-storage
+      - if: always()
+        run: make stop
