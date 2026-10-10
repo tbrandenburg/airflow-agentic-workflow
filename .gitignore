@@ -7,3 +7,10 @@ infra/airflow/.local/
 *.egg-info/
 node_modules/
 packages/agent-runtime/dist/
+
+# Local browser evidence and credentials; curated docs/images assets are tracked.
+.playwright-mcp/
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
