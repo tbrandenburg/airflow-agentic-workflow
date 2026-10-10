@@ -1,0 +1,109 @@
+{
+  "$defs": {
+    "CheckReport": {
+      "additionalProperties": false,
+      "properties": {
+        "argv": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Argv",
+          "type": "array"
+        },
+        "duration_seconds": {
+          "minimum": 0,
+          "title": "Duration Seconds",
+          "type": "number"
+        },
+        "exit_code": {
+          "title": "Exit Code",
+          "type": "integer"
+        },
+        "name": {
+          "enum": [
+            "formatter",
+            "lint",
+            "tests",
+            "secret_scan"
+          ],
+          "title": "Name",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "stderr": {
+          "maxLength": 65536,
+          "title": "Stderr",
+          "type": "string"
+        },
+        "stdout": {
+          "maxLength": 65536,
+          "title": "Stdout",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "argv",
+        "exit_code",
+        "stdout",
+        "stderr",
+        "duration_seconds"
+      ],
+      "title": "CheckReport",
+      "type": "object"
+    }
+  },
+  "$id": "urn:local-airflow-poc:validation-report:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "base_sha": {
+      "pattern": "^[0-9a-f]{40}$",
+      "title": "Base Sha",
+      "type": "string"
+    },
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/CheckReport"
+      },
+      "maxItems": 4,
+      "minItems": 4,
+      "title": "Checks",
+      "type": "array"
+    },
+    "gate_status": {
+      "enum": [
+        "passed",
+        "failed"
+      ],
+      "title": "Gate Status",
+      "type": "string"
+    },
+    "patch_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Patch Sha256",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "base_sha",
+    "patch_sha256",
+    "gate_status",
+    "checks"
+  ],
+  "title": "ValidationReport",
+  "type": "object"
+}

@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+infra/airflow/.local/
+*.egg-info/
+node_modules/
+packages/agent-runtime/dist/

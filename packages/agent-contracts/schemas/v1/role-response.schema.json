@@ -1,0 +1,216 @@
+{
+  "$defs": {
+    "CoderResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "const": "coder",
+          "title": "Role",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 16000,
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        },
+        "unified_diff": {
+          "maxLength": 262144,
+          "minLength": 1,
+          "pattern": "^diff --git ",
+          "title": "Unified Diff",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "summary",
+        "unified_diff"
+      ],
+      "title": "CoderResponse",
+      "type": "object"
+    },
+    "Finding": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "maxLength": 16000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "recommendations": {
+          "items": {
+            "maxLength": 16000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Recommendations",
+          "type": "array"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "warning",
+            "error",
+            "critical"
+          ],
+          "title": "Severity",
+          "type": "string"
+        }
+      },
+      "required": [
+        "severity",
+        "description",
+        "recommendations"
+      ],
+      "title": "Finding",
+      "type": "object"
+    },
+    "PlannerResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "assumptions": {
+          "items": {
+            "maxLength": 16000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Assumptions",
+          "type": "array"
+        },
+        "plan": {
+          "maxLength": 16000,
+          "minLength": 1,
+          "title": "Plan",
+          "type": "string"
+        },
+        "role": {
+          "const": "planner",
+          "title": "Role",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "suggested_paths": {
+          "items": {
+            "maxLength": 16000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Suggested Paths",
+          "type": "array"
+        },
+        "validation_focus": {
+          "items": {
+            "maxLength": 16000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Validation Focus",
+          "type": "array"
+        }
+      },
+      "required": [
+        "role",
+        "plan",
+        "suggested_paths",
+        "assumptions",
+        "validation_focus"
+      ],
+      "title": "PlannerResponse",
+      "type": "object"
+    },
+    "ReviewerResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/Finding"
+          },
+          "maxItems": 100,
+          "title": "Findings",
+          "type": "array"
+        },
+        "recommendations": {
+          "items": {
+            "maxLength": 16000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Recommendations",
+          "type": "array"
+        },
+        "role": {
+          "const": "reviewer",
+          "title": "Role",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "verdict": {
+          "enum": [
+            "approved",
+            "changes_requested"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "findings",
+        "recommendations",
+        "verdict"
+      ],
+      "title": "ReviewerResponse",
+      "type": "object"
+    }
+  },
+  "$id": "urn:local-airflow-poc:role-response:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "discriminator": {
+    "mapping": {
+      "coder": "#/$defs/CoderResponse",
+      "planner": "#/$defs/PlannerResponse",
+      "reviewer": "#/$defs/ReviewerResponse"
+    },
+    "propertyName": "role"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/PlannerResponse"
+    },
+    {
+      "$ref": "#/$defs/CoderResponse"
+    },
+    {
+      "$ref": "#/$defs/ReviewerResponse"
+    }
+  ]
+}

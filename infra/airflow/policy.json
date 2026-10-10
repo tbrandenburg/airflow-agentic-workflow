@@ -1,0 +1,9 @@
+{
+  "project": "example-service",
+  "workflow": "code-review",
+  "task": "platform-smoke",
+  "dag_id": "platform_smoke",
+  "approved_sha": "64b998b135f36de249d9708a2307d423e935c2e8",
+  "model": "github-copilot/gpt-6.1-sol",
+  "mirror": "/mirrors/example-service.git"
+}

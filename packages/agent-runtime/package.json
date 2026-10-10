@@ -1,0 +1,28 @@
+{
+  "name": "@local-airflow/agent-runtime",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.15.0"
+  },
+  "scripts": {
+    "build": "tsc && node scripts/schema.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src test",
+    "format:check": "prettier --check src test scripts package.json tsconfig.json eslint.config.mjs",
+    "format": "prettier --write src test scripts package.json tsconfig.json eslint.config.mjs",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "ajv": "8.20.0",
+    "opencode-ai": "1.18.32"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "typescript": "5.9.3",
+    "eslint": "9.39.1",
+    "typescript-eslint": "8.48.0",
+    "prettier": "3.7.4"
+  }
+}

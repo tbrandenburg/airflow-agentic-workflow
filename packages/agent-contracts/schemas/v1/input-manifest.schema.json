@@ -1,0 +1,195 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_type": {
+          "enum": [
+            "application/json",
+            "text/plain",
+            "text/markdown",
+            "application/x-tar"
+          ],
+          "title": "Content Type",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size": {
+          "maximum": 8388608,
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "uri": {
+          "pattern": "^s3://[a-z0-9-]+/[a-zA-Z0-9_./-]+$",
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri",
+        "content_type",
+        "size",
+        "sha256"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "ExpectedOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "content_type": {
+          "enum": [
+            "application/json",
+            "text/plain",
+            "text/markdown",
+            "application/x-tar"
+          ],
+          "title": "Content Type",
+          "type": "string"
+        },
+        "max_bytes": {
+          "maximum": 8388608,
+          "minimum": 1,
+          "title": "Max Bytes",
+          "type": "integer"
+        },
+        "path": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "content_type",
+        "max_bytes"
+      ],
+      "title": "ExpectedOutput",
+      "type": "object"
+    }
+  },
+  "$id": "urn:local-airflow-poc:input-manifest:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "attempt": {
+      "minimum": 1,
+      "title": "Attempt",
+      "type": "integer"
+    },
+    "base_sha": {
+      "pattern": "^[0-9a-f]{40}$",
+      "title": "Base Sha",
+      "type": "string"
+    },
+    "dag_id": {
+      "pattern": "^[a-zA-Z0-9_-]{1,80}$",
+      "title": "Dag Id",
+      "type": "string"
+    },
+    "dag_run_id": {
+      "maxLength": 250,
+      "minLength": 1,
+      "title": "Dag Run Id",
+      "type": "string"
+    },
+    "expected_outputs": {
+      "items": {
+        "$ref": "#/$defs/ExpectedOutput"
+      },
+      "maxItems": 20,
+      "title": "Expected Outputs",
+      "type": "array"
+    },
+    "input_artifacts": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "maxProperties": 20,
+      "title": "Input Artifacts",
+      "type": "object"
+    },
+    "policy_version": {
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "project": {
+      "pattern": "^[a-zA-Z0-9_-]{1,80}$",
+      "title": "Project",
+      "type": "string"
+    },
+    "runtime_version": {
+      "title": "Runtime Version",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "task_id": {
+      "pattern": "^[a-zA-Z0-9_-]{1,80}$",
+      "title": "Task Id",
+      "type": "string"
+    },
+    "task_request": {
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Task Request",
+      "type": "string"
+    },
+    "timeout_seconds": {
+      "maximum": 120,
+      "minimum": 1,
+      "title": "Timeout Seconds",
+      "type": "integer"
+    },
+    "workflow": {
+      "pattern": "^[a-zA-Z0-9_-]{1,80}$",
+      "title": "Workflow",
+      "type": "string"
+    },
+    "workspace_path": {
+      "minLength": 1,
+      "title": "Workspace Path",
+      "type": "string"
+    }
+  },
+  "required": [
+    "dag_id",
+    "dag_run_id",
+    "task_id",
+    "attempt",
+    "project",
+    "workflow",
+    "base_sha",
+    "task_request",
+    "policy_version",
+    "runtime_version",
+    "input_artifacts",
+    "expected_outputs",
+    "workspace_path",
+    "timeout_seconds"
+  ],
+  "title": "InputManifest",
+  "type": "object"
+}

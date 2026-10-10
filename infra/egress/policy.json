@@ -1,0 +1,4 @@
+{
+  "exact": ["github.com", "api.github.com"],
+  "subdomains": ["githubcopilot.com"]
+}
