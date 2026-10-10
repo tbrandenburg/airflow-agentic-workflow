@@ -23,6 +23,7 @@ jobs:
         run: |
           docker compose --env-file infra/airflow/.local/compose.env -f infra/airflow/compose.yaml build minio
           .venv/bin/python tools/deploy.py preflight
+          docker compose --env-file infra/airflow/.local/compose.env -f infra/airflow/compose.yaml run --rm --no-deps --user 0 --entrypoint chown minio 1000:1000 /data
           docker compose --env-file infra/airflow/.local/compose.env -f infra/airflow/compose.yaml up -d --no-deps --wait minio
       - run: make test-storage
       - if: always()
