@@ -94,7 +94,7 @@ payload = {
     "workflow": "code-review",
     "task": "Change service.py health() return value from ok to healthy. No other changes.",
     "base_ref": "64b998b135f36de249d9708a2307d423e935c2e8",
-    "model_settings": {"model": "github-copilot/gpt-6.1-sol"},
+    "model_settings": {"model": "openai/gpt-6.1-sol"},
 }
 with httpx.Client(base_url="http://127.0.0.1:18081", timeout=30,
                  headers={"Authorization": f"Bearer {token}"}) as client:
