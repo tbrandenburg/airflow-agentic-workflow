@@ -42,8 +42,8 @@ Linux with Docker Engine/Compose, Git, Make, Python **3.12**, `uv`, Node.js
 **24.15.0**, and ShellCheck. Allow approximately **10 GB disk** and **4 GB RAM**;
 the first pinned MinIO source build can take several minutes.
 
-Real model execution requires local OpenCode authentication for the approved
-`github-copilot/gpt-6.1-sol` model. Provider access and model availability are prerequisites.
+Real model execution requires local OpenCode authentication for the approved model.
+Provider access and model availability are prerequisites.
 
 ```sh
 git clone https://github.com/tbrandenburg/airflow-agentic-workflow.git
